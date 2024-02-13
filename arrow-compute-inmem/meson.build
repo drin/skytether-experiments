@@ -9,7 +9,7 @@ add_project_arguments('-DDEBUG=0', language: 'cpp')
 
 
 # >> Dependencies
-dep_arrow = dependency('arrow-dataset', version: '>=12.0.1', static: false)
+dep_arrow = dependency('arrow-dataset', version: '>=15.0.0', static: false)
 
 
 # >> Executables
