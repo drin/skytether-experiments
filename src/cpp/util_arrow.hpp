@@ -22,14 +22,15 @@
 
 #include "adapter_arrow.hpp"
 
+// NOTE: For debugging
+#include <ctime>
+#include <iomanip>
+
 
 // ------------------------------
-// Type Aliases
+// Macros and aliases
 
-// >> for readability
-using SharedChunkedArr = shared_ptr<ChunkedArray>;
-
-// Function Aliases
+// >> Arrow: Numeric compute functions
 using arrow::compute::Add;
 using arrow::compute::Subtract;
 using arrow::compute::Divide;
@@ -37,9 +38,15 @@ using arrow::compute::Multiply;
 using arrow::compute::Power;
 using arrow::compute::AbsoluteValue;
 
+// >> Arrow: Other compute functions
+using arrow::compute::Take;
+
 
 // ------------------------------
 // Functions
+
+// for readability
+using SharedChunkedArr = shared_ptr<ChunkedArray>;
 
 SharedChunkedArr VecAdd(SharedChunkedArr left_op, SharedChunkedArr right_op);
 SharedChunkedArr VecSub(SharedChunkedArr left_op, SharedChunkedArr right_op);
@@ -48,3 +55,6 @@ SharedChunkedArr VecDiv(SharedChunkedArr left_op, Datum            right_op);
 SharedChunkedArr VecMul(SharedChunkedArr left_op, SharedChunkedArr right_op);
 SharedChunkedArr VecPow(SharedChunkedArr left_op, Datum            right_op);
 SharedChunkedArr VecAbs(SharedChunkedArr unary_op);
+
+Result<shared_ptr<Table>>
+CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_table);

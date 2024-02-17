@@ -25,18 +25,30 @@
 
 
 // ------------------------------
+// Macros and aliases
+
+using std::unordered_map;
+using arrow::util::string_view;
+
+// ------------------------------
 // Classes
 
-struct Aggr {
+struct MeanAggr {
     uint64_t                 count;
     shared_ptr<ChunkedArray> means;
     shared_ptr<ChunkedArray> variances;
 
-    Aggr(): count(0), means(nullptr), variances(nullptr) {};
+    MeanAggr(): count(0), means(nullptr), variances(nullptr) {};
+
+    Status PrintM1M2();
+    Status PrintState();
+
+    Status Initialize(shared_ptr<ChunkedArray> initial_vals);
+    Status Combine(const MeanAggr *other_aggr);
+    Status Accumulate( shared_ptr<Table> new_vals
+                      ,int64_t           col_startndx = 1
+                      ,int64_t           col_stopndx  = 0);
 
     shared_ptr<Table> TakeResult();
-    Status            Initialize(shared_ptr<ChunkedArray> initial_vals);
-    Status            Accumulate( shared_ptr<Table> new_vals
-                                 ,int64_t           col_startndx=1
-                                 ,int64_t           col_stopndx =0);
+    shared_ptr<Table> ComputeTStatWith(const MeanAggr &other_aggr);
 };
