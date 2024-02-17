@@ -19,46 +19,38 @@
 // ------------------------------
 // Dependencies
 
-#include "table_op.hpp"
+#include "operators.hpp"
+#include "util_arrow.hpp"
 
 
 // ------------------------------
 // Classes
 
 // >> Aggr implementation
-Aggr::~Aggr() {
-    means.reset();
-    variances.reset();
-}
-
-Aggr::Aggr() {
-    count     = 0;
-    means     = std::shared_ptr<ChunkedArray>(nullptr);
-    variances = std::shared_ptr<ChunkedArray>(nullptr);
-}
-
 shared_ptr<Table>
 Aggr::TakeResult() {
-    auto result_schema = arrow::schema({
-          arrow::field("mean"    , arrow::float64())
-         ,arrow::field("variance", arrow::float64())
-     });
+  auto result_schema = arrow::schema({
+        arrow::field("mean"    , arrow::float64())
+       ,arrow::field("variance", arrow::float64())
+  });
 
-    return Table::Make(result_schema, { this->means, this->variances });
+  return Table::Make(result_schema, { this->means, this->variances });
 }
 
 Status
 Aggr::Initialize(shared_ptr<ChunkedArray> initial_vals) {
-    arrow::DoubleBuilder initial_vars;
+  arrow::DoubleBuilder init_variance;
 
-    ARROW_RETURN_NOT_OK(initial_vars.AppendEmptyValues(initial_vals->length()));
-    ARROW_ASSIGN_OR_RAISE(shared_ptr<Array> built_arr, initial_vars.Finish());
+  // Initialize N empty variance values, where N is initial_vals->length
+  ARROW_RETURN_NOT_OK(init_variance.AppendEmptyValues(initial_vals->length()));
+  ARROW_ASSIGN_OR_RAISE(shared_ptr<Array> variance_arr, init_variance.Finish());
 
-    variances   = std::make_shared<ChunkedArray>(built_arr);
-    means       = initial_vals;
-    this->count = 1;
+  // `variances` likely has different chunking from `initial_vals`
+  variances   = std::make_shared<ChunkedArray>(variance_arr);
+  means       = initial_vals;
+  this->count = 1;
 
-    return Status::OK();
+  return Status::OK();
 }
 
 

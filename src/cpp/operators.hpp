@@ -32,8 +32,7 @@ struct Aggr {
     shared_ptr<ChunkedArray> means;
     shared_ptr<ChunkedArray> variances;
 
-    Aggr();
-    ~Aggr();
+    Aggr(): count(0), means(nullptr), variances(nullptr) {};
 
     shared_ptr<Table> TakeResult();
     Status            Initialize(shared_ptr<ChunkedArray> initial_vals);
