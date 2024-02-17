@@ -220,3 +220,28 @@ MeanAggr::ComputeTStatWith(const MeanAggr &other_aggr) {
     );
 }
 
+
+/**
+ * Compute partial aggregate from `src_table`, and then return the time to calculate
+ * the aggregate. Store the result in the shared_ptr pointed to by `aggr_result`.
+ */
+std::chrono::milliseconds
+AggrTable( shared_ptr<Table>  src_table
+          ,int64_t            col_startndx
+          ,int64_t            col_limit
+          ,shared_ptr<Table> *aggr_result) {
+  MeanAggr partial_aggr;
+
+  int64_t col_stopndx = src_table->num_columns();
+  if (col_limit > 0 and col_startndx + col_limit < col_stopndx) {
+    col_stopndx = col_startndx + col_limit;
+  }
+
+  auto aggr_tstart = std::chrono::steady_clock::now();
+  partial_aggr.Accumulate(src_table, col_startndx, col_stopndx);
+  auto aggr_tstop  = std::chrono::steady_clock::now();
+
+  (*aggr_result) = partial_aggr.TakeResult();
+
+  return std::chrono::duration_cast<std::chrono::milliseconds>(aggr_tstop - aggr_tstart);
+}

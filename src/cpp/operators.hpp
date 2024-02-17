@@ -25,12 +25,6 @@
 
 
 // ------------------------------
-// Macros and aliases
-
-using std::unordered_map;
-using arrow::util::string_view;
-
-// ------------------------------
 // Classes
 
 struct MeanAggr {
@@ -52,3 +46,11 @@ struct MeanAggr {
     shared_ptr<Table> TakeResult();
     shared_ptr<Table> ComputeTStatWith(const MeanAggr &other_aggr);
 };
+
+
+// Convenience function that times aggregation of a single table
+std::chrono::milliseconds
+AggrTable( shared_ptr<Table>  src_table
+          ,int64_t            col_startndx
+          ,int64_t            col_limit
+          ,shared_ptr<Table> *aggr_result);

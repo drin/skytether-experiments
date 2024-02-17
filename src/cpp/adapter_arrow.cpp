@@ -18,111 +18,122 @@
 
 // ------------------------------
 // Dependencies
+#include "experiments.hpp"
 #include "adapter_arrow.hpp"
 
 
 // ------------------------------
-// Functions
+// Aliases
+using arrow::fs::FileSystemFromUri;
 
-shared_ptr<ChunkedArray>
-VecAdd(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-    if (left_op == nullptr or right_op == nullptr) { return nullptr; }
 
-    Result<Datum> op_result = Add(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+// ------------------------------
+// Convenience Functions
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+void
+PrintSchema(shared_ptr<Schema> schema, int64_t offset, int64_t length) {
+  std::cout << "Schema:" << std::endl;
+
+  // >> Print some attributes (columns)
+  PrintSchemaAttributes(schema, offset, length);
+
+  // >> Print some metadata key-values (if there are any)
+  if (schema->HasMetadata()) {
+    PrintSchemaMetadata(schema->metadata()->Copy(), offset, length);
+  }
 }
 
 
-shared_ptr<ChunkedArray>
-VecSub(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-    if (left_op == nullptr or right_op == nullptr) { return nullptr; }
+void
+PrintTable(shared_ptr<Table> table_data, int64_t offset, int64_t length) {
+  shared_ptr<Table> table_slice;
+  int64_t  row_count = table_data->num_rows();
 
-    Result<Datum> op_result = Subtract(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+  std::cout << "Table Excerpt ";
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+  if (length > 0) {
+    int64_t max_rowndx = length < row_count ? length : row_count;
+    table_slice = table_data->Slice(offset, max_rowndx);
+    std::cout << "(" << max_rowndx << " of " << row_count << ")";
+  }
+
+  else {
+    table_slice = table_data->Slice(offset);
+    std::cout << "(" << row_count << " of " << row_count << ")";
+  }
+
+  std::cout << std::endl
+            << "--------------" << std::endl
+            << table_slice->ToString()
+            << std::endl
+  ;
 }
 
 
-shared_ptr<ChunkedArray>
-VecDiv(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-    if (left_op == nullptr or right_op == nullptr) { return nullptr; }
+void
+PrintBatch(shared_ptr<RecordBatch> batch_data, int64_t offset, int64_t length) {
+  shared_ptr<RecordBatch> batch_slice;
+  int64_t row_count = batch_data->num_rows();
 
-    Result<Datum> op_result = Divide(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+  std::cout << "Table Excerpt ";
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+  if (length > 0) {
+    batch_slice = batch_data->Slice(offset, length);
+    std::cout << "(" << length << " of " << row_count << " rows)";
+  }
+
+  else {
+    batch_slice = batch_data->Slice(offset);
+    std::cout << "(" << row_count << " of " << row_count << " rows)";
+  }
+
+  std::cout << std::endl
+            << "--------------" << std::endl
+            << batch_slice->ToString()
+            << std::endl
+  ;
 }
 
 
-shared_ptr<ChunkedArray>
-VecDiv(shared_ptr<ChunkedArray> left_op, Datum right_op) {
-    if (left_op == nullptr) { return nullptr; }
+// this Reader is arrow::ipc::feather::Reader
+Result<shared_ptr<Reader>>
+ReaderForIPCFile(const string &path_as_uri) {
+  string path_to_file;
 
-    Result<Datum> op_result = Divide(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+  // get a `FileSystem` instance (local fs scheme is "file://")
+  ARROW_ASSIGN_OR_RAISE(auto localfs, FileSystemFromUri(path_as_uri, &path_to_file));
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+  // use the `FileSystem` instance to open a handle to the file
+  ARROW_ASSIGN_OR_RAISE(auto input_file_stream, localfs->OpenInputFile(path_to_file));
+
+  return Reader::Open(input_file_stream);
 }
 
 
-shared_ptr<ChunkedArray>
-VecMul(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-    if (left_op == nullptr or right_op == nullptr) { return nullptr; }
+Result<shared_ptr<Table>>
+ReadIPCFile(const string& path_to_file) {
+  shared_ptr<Table> data_table;
 
-    Result<Datum> op_result = Multiply(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+  ARROW_ASSIGN_OR_RAISE(auto feather_reader, ReaderForIPCFile(path_to_file));
+  ARROW_RETURN_NOT_OK(feather_reader->Read(&data_table));
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+  return data_table;
 }
 
 
-shared_ptr<ChunkedArray>
-VecMul(shared_ptr<ChunkedArray> left_op, Datum right_op) {
-    if (left_op == nullptr) { return nullptr; }
+Result<shared_ptr<Table>>
+ReadBatchesFromTable(arrow::TableBatchReader &reader, size_t batch_count) {
+  vector<shared_ptr<RecordBatch>> batch_list;
 
-    Result<Datum> op_result = Multiply(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
+  shared_ptr<RecordBatch> curr_batch;
+  for (size_t batch_ndx = 0; batch_ndx < batch_count; ++batch_ndx) {
+    ARROW_RETURN_NOT_OK(reader.ReadNext(&curr_batch));
+    if (curr_batch == nullptr) { break; }
 
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
-}
+    batch_list.push_back(curr_batch);
+  }
 
+  ARROW_ASSIGN_OR_RAISE(auto table_chunk, Table::FromRecordBatches(batch_list));
 
-shared_ptr<ChunkedArray>
-VecPow(shared_ptr<ChunkedArray> left_op, Datum right_op) {
-    if (left_op == nullptr) { return nullptr; }
-
-    Result<Datum> op_result = Power(left_op, right_op);
-    if (not op_result.ok()) { return nullptr; }
-
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
-}
-
-
-shared_ptr<ChunkedArray>
-VecAbs(shared_ptr<ChunkedArray> unary_op) {
-    if (unary_op == nullptr) { return nullptr; }
-
-    Result<Datum> op_result = AbsoluteValue(unary_op);
-    if (not op_result.ok()) { return nullptr; }
-
-    return std::make_shared<ChunkedArray>(
-        std::move(op_result.ValueOrDie()).chunks()
-    );
+  return table_chunk->CombineChunks();
 }

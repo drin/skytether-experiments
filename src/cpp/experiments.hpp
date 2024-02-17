@@ -1,7 +1,7 @@
 // ------------------------------
 // LICENSE
 //
-// Copyright 2023 Aldrin Montana
+// Copyright 2024 Aldrin Montana
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,19 +23,25 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 
-// brings in all Apache Arrow dependencies
-#include "adapter_arrow.hpp"
-#include "table_op.hpp"
+#include <ctime>
+#include <iomanip>
 
 
 // ------------------------------
 // Type Aliases and Macros
 
+#define DEBUG 1
+
 // >> Core types
 using std::shared_ptr;
+using std::unique_ptr;
 
-// >> reader for Arrow feather files
-using arrow::ipc::feather::Reader;
+using std::string;
+using std::vector;
+using std::unordered_map;
 
-#define DEBUG 1
+using Int32Vec = std::vector<int32_t>;
+using Int64Vec = std::vector<int64_t>;
+using StrVec   = std::vector<std::string>;
