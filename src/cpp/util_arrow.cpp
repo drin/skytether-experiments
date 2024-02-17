@@ -18,6 +18,7 @@
 
 // ------------------------------
 // Dependencies
+#include "experiments.hpp"
 #include "util_arrow.hpp"
 
 
@@ -29,7 +30,7 @@
 
 template<typename ElementType, typename BuilderType>
 Result<shared_ptr<Array>>
-VecToArrow(const std::vector<ElementType> &src_data) {
+VecToArrow(const vector<ElementType> &src_data) {
     BuilderType array_builder;
     ARROW_RETURN_NOT_OK(array_builder.Resize(src_data.size()));
     ARROW_RETURN_NOT_OK(array_builder.AppendValues(src_data));
@@ -44,41 +45,24 @@ VecToArrow(const std::vector<ElementType> &src_data) {
 // >> Convenience wrappers
 
 shared_ptr<ChunkedArray>
-VecAdd(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
+VecAdd(shared_ptr<ChunkedArray> left_op, Datum right_op) {
   if (left_op == nullptr or right_op == nullptr) { return nullptr; }
 
   Result<Datum> op_result = Add(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
 
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
+  return std::move(op_result).ValueOrDie().chunked_array();
 }
 
 
 shared_ptr<ChunkedArray>
-VecSub(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
+VecSub(shared_ptr<ChunkedArray> left_op, Datum right_op) {
   if (left_op == nullptr or right_op == nullptr) { return nullptr; }
 
   Result<Datum> op_result = Subtract(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
 
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
-}
-
-
-shared_ptr<ChunkedArray>
-VecDiv(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-  if (left_op == nullptr or right_op == nullptr) { return nullptr; }
-
-  Result<Datum> op_result = Divide(left_op, right_op);
-  if (not op_result.ok()) { return nullptr; }
-
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
+  return std::move(op_result).ValueOrDie().chunked_array();
 }
 
 
@@ -89,22 +73,7 @@ VecDiv(shared_ptr<ChunkedArray> left_op, Datum right_op) {
   Result<Datum> op_result = Divide(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
 
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
-}
-
-
-shared_ptr<ChunkedArray>
-VecMul(shared_ptr<ChunkedArray> left_op, shared_ptr<ChunkedArray> right_op) {
-  if (left_op == nullptr or right_op == nullptr) { return nullptr; }
-
-  Result<Datum> op_result = Multiply(left_op, right_op);
-  if (not op_result.ok()) { return nullptr; }
-
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
+  return std::move(op_result).ValueOrDie().chunked_array();
 }
 
 
@@ -115,9 +84,7 @@ VecMul(shared_ptr<ChunkedArray> left_op, Datum right_op) {
   Result<Datum> op_result = Multiply(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
 
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
+  return std::move(op_result).ValueOrDie().chunked_array();
 }
 
 
@@ -128,23 +95,9 @@ VecPow(shared_ptr<ChunkedArray> left_op, Datum right_op) {
   Result<Datum> op_result = Power(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
 
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
+  return std::move(op_result).ValueOrDie().chunked_array();
 }
 
-
-shared_ptr<ChunkedArray>
-VecAbs(shared_ptr<ChunkedArray> unary_op) {
-  if (unary_op == nullptr) { return nullptr; }
-
-  Result<Datum> op_result = AbsoluteValue(unary_op);
-  if (not op_result.ok()) { return nullptr; }
-
-  return std::make_shared<ChunkedArray>(
-    std::move(op_result.ValueOrDie()).chunks()
-  );
-}
 
 // TODO: eventually decompose this so that each chunk can be individually updated
 Result<shared_ptr<Table>>
@@ -156,13 +109,11 @@ SelectTableByRow(shared_ptr<Table> input_table, Int64Vec &row_indices) {
     }
 
     ARROW_ASSIGN_OR_RAISE(
-         Datum selection_result
+         Datum selection
         ,Take(input_table, convert_result.ValueOrDie())
     );
 
-    return Result<shared_ptr<Table>>(
-        arrow::util::get<shared_ptr<Table>>(selection_result.value)
-    );
+    return std::move(selection).table();
 }
 
 
@@ -173,12 +124,12 @@ SelectTableByRow(shared_ptr<Table> input_table, Int64Vec &row_indices) {
 shared_ptr<RecordBatch>
 CreateEmptyRecordBatch(shared_ptr<Schema> batch_schema, StrVec &row_ids) {
     // can be parameterized later; if desired
-    double              default_fillval = 0;
-    ArrayVec            batch_data;
-    std::vector<double> fill_values(row_ids.size(), default_fillval);
+    double         default_fillval = 0;
+    ArrayVec       batch_data;
+    vector<double> fill_values(row_ids.size(), default_fillval);
 
     // First, add the IDs (assumed to be gene IDs for now)
-    auto rowid_result = VecToArrow<std::string, arrow::StringBuilder>(row_ids);
+    auto rowid_result = VecToArrow<string, arrow::StringBuilder>(row_ids);
     if (not rowid_result.ok()) {
         std::cerr << "Unable to set IDs for empty RecordBatch" << std::endl;
         return nullptr;
@@ -284,7 +235,7 @@ CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_tabl
             }
 
             // if we're here, then the ID didn't have a hit in src_keymap
-            missing_ids.push_back(std::string { src_keyval });
+            missing_ids.push_back(string { src_keyval });
         }
     }
 

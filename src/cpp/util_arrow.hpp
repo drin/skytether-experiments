@@ -22,10 +22,6 @@
 
 #include "adapter_arrow.hpp"
 
-// NOTE: For debugging
-#include <ctime>
-#include <iomanip>
-
 
 // ------------------------------
 // Macros and aliases
@@ -45,16 +41,11 @@ using arrow::compute::Take;
 // ------------------------------
 // Functions
 
-// for readability
-using SharedChunkedArr = shared_ptr<ChunkedArray>;
-
-SharedChunkedArr VecAdd(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecSub(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecDiv(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecDiv(SharedChunkedArr left_op, Datum            right_op);
-SharedChunkedArr VecMul(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecPow(SharedChunkedArr left_op, Datum            right_op);
-SharedChunkedArr VecAbs(SharedChunkedArr unary_op);
+shared_ptr<ChunkedArray> VecAdd(shared_ptr<ChunkedArray> left_op, Datum right_op);
+shared_ptr<ChunkedArray> VecSub(shared_ptr<ChunkedArray> left_op, Datum right_op);
+shared_ptr<ChunkedArray> VecDiv(shared_ptr<ChunkedArray> left_op, Datum right_op);
+shared_ptr<ChunkedArray> VecMul(shared_ptr<ChunkedArray> left_op, Datum right_op);
+shared_ptr<ChunkedArray> VecPow(shared_ptr<ChunkedArray> left_op, Datum right_op);
 
 Result<shared_ptr<Table>>
 CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_table);
