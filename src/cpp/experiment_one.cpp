@@ -1,7 +1,7 @@
 // ------------------------------
 // LICENSE
 //
-// Copyright 2023 Aldrin Montana
+// Copyright 2024 Aldrin Montana
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,115 +25,12 @@
 // Variables
 
 static std::string help_message {
-    "simple <absolute path to current dir> <'table' | 'vector'>"
+    "experiment_one <absolute path to current dir> <'table' | 'vector'>"
 };
 
 
 // ------------------------------
 // Functions
-
-// Result<shared_ptr<RecordBatchStreamReader>>
-Result<shared_ptr<Reader>>
-ReaderForIPCFile(const std::string &path_as_uri) {
-    #if DEBUG != 0
-        std::cout << "Reading arrow IPC-formatted file: " << path_as_uri << std::endl;
-    #endif
-
-    std::string path_to_file;
-
-    // get a `FileSystem` instance (local fs scheme is "file://")
-    ARROW_ASSIGN_OR_RAISE(auto localfs, arrow::fs::FileSystemFromUri(path_as_uri, &path_to_file));
-
-    // use the `FileSystem` instance to open a handle to the file
-    ARROW_ASSIGN_OR_RAISE(auto input_file_stream, localfs->OpenInputFile(path_to_file));
-
-    // read from the handle using `RecordBatchStreamReader`
-    /*
-    return RecordBatchStreamReader::Open(
-         input_file_stream
-        ,IpcReadOptions::Defaults()
-    );
-    */
-
-    // return Reader::Open(input_file_stream, IpcReadOptions::Defaults());
-    return Reader::Open(input_file_stream);
-}
-
-
-Result<shared_ptr<Table>>
-ReadIPCFile(const std::string& path_to_file) {
-    #if DEBUG != 0
-        std::cout << "Parsing file: '" << path_to_file << "'" << std::endl;
-    #endif
-
-    // Declares and initializes `batch_reader`
-    // ARROW_ASSIGN_OR_RAISE(auto batch_reader, ReaderForIPCFile(path_to_file));
-    // return arrow::Table::FromRecordBatchReader(batch_reader.get());
-
-    shared_ptr<Table> data_table = shared_ptr<Table>(nullptr);
-
-    ARROW_ASSIGN_OR_RAISE(auto feather_reader, ReaderForIPCFile(path_to_file));
-    ARROW_RETURN_NOT_OK(feather_reader->Read(&data_table));
-
-    return data_table;
-}
-
-
-/**
- * Compute partial aggregate from `src_table`, and then return the time to calculate
- * the aggregate. Store the result in the shared_ptr pointed to by `aggr_result`.
- */
-std::chrono::milliseconds
-AggrTable( shared_ptr<Table>  src_table
-          ,int64_t            col_startndx
-          ,int64_t            col_limit
-          ,shared_ptr<Table> *aggr_result) {
-
-    Aggr partial_aggr;
-    int64_t col_stopndx = 0;
-
-    if (col_limit > 0) {
-        col_stopndx = (
-            ((col_startndx + col_limit) < src_table->num_columns()) ?
-                  col_startndx + col_limit
-                : src_table->num_columns()
-        );
-    }
-
-    // NOTE: we are *only* timing the computation on each slice
-    auto aggr_tstart = std::chrono::steady_clock::now();
-
-    // does the remainder (last partition) or the whole thing (vsplit_count == 1)
-    partial_aggr.Accumulate(src_table, col_startndx, col_stopndx);
-
-    auto aggr_tstop = std::chrono::steady_clock::now();
-
-    (*aggr_result) = partial_aggr.TakeResult();
-
-    return std::chrono::duration_cast<std::chrono::milliseconds>(aggr_tstop - aggr_tstart);
-}
-
-
-Result<shared_ptr<Table>>
-ReadBatchesFromTable(arrow::TableBatchReader &reader, size_t batch_count) {
-    std::vector<shared_ptr<RecordBatch>> batch_list;
-
-    shared_ptr<RecordBatch> curr_batch;
-    for (size_t batch_ndx = 0; batch_ndx < batch_count; ++batch_ndx) {
-        ARROW_RETURN_NOT_OK(reader.ReadNext(&curr_batch));
-        if (curr_batch == nullptr) { break; }
-
-        batch_list.push_back(curr_batch);
-    }
-
-    ARROW_ASSIGN_OR_RAISE(
-         auto table_chunk
-        ,Table::FromRecordBatches(batch_list)
-    );
-
-    return table_chunk->CombineChunks();
-}
-
 
 int main(int argc, char **argv) {
     // ----------
