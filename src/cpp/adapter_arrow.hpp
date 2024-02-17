@@ -48,26 +48,3 @@ using arrow::io::RandomAccessFile;
 using arrow::fs::FileSystem;
 using arrow::ipc::RecordBatchStreamReader;
 using arrow::ipc::IpcReadOptions;
-
-// >> Functions
-using arrow::compute::Add;
-using arrow::compute::Subtract;
-using arrow::compute::Divide;
-using arrow::compute::Multiply;
-using arrow::compute::Power;
-using arrow::compute::AbsoluteValue;
-
-
-// ------------------------------
-// Functions
-
-// >> for readability of the below prototypes
-using SharedChunkedArr = shared_ptr<ChunkedArray>;
-
-SharedChunkedArr VecAdd(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecSub(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecDiv(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecDiv(SharedChunkedArr left_op, Datum            right_op);
-SharedChunkedArr VecMul(SharedChunkedArr left_op, SharedChunkedArr right_op);
-SharedChunkedArr VecPow(SharedChunkedArr left_op, Datum            right_op);
-SharedChunkedArr VecAbs(SharedChunkedArr unary_op);
