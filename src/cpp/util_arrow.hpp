@@ -26,6 +26,9 @@
 // ------------------------------
 // Macros and aliases
 
+// >> Arrow: IO classes
+using arrow::TableBatchReader;
+
 // >> Arrow: Numeric compute functions
 using arrow::compute::Add;
 using arrow::compute::Subtract;

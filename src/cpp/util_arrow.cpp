@@ -46,7 +46,7 @@ VecToArrow(const vector<ElementType> &src_data) {
 
 shared_ptr<ChunkedArray>
 VecAdd(shared_ptr<ChunkedArray> left_op, Datum right_op) {
-  if (left_op == nullptr or right_op == nullptr) { return nullptr; }
+  if (left_op == nullptr or right_op.kind() == Datum::NONE) { return nullptr; }
 
   Result<Datum> op_result = Add(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
@@ -57,7 +57,7 @@ VecAdd(shared_ptr<ChunkedArray> left_op, Datum right_op) {
 
 shared_ptr<ChunkedArray>
 VecSub(shared_ptr<ChunkedArray> left_op, Datum right_op) {
-  if (left_op == nullptr or right_op == nullptr) { return nullptr; }
+  if (left_op == nullptr or right_op.kind() == Datum::NONE) { return nullptr; }
 
   Result<Datum> op_result = Subtract(left_op, right_op);
   if (not op_result.ok()) { return nullptr; }
@@ -125,7 +125,7 @@ shared_ptr<RecordBatch>
 CreateEmptyRecordBatch(shared_ptr<Schema> batch_schema, StrVec &row_ids) {
     // can be parameterized later; if desired
     double         default_fillval = 0;
-    ArrayVec       batch_data;
+    ArrayVector    batch_data;
     vector<double> fill_values(row_ids.size(), default_fillval);
 
     // First, add the IDs (assumed to be gene IDs for now)
@@ -180,9 +180,9 @@ CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_tabl
     }
 
     // Construct a vector of RecordBatches to convert into a result table
-    StrVec         missing_ids;
-    Int64Vec       match_indices;
-    RecordBatchVec result_batches;
+    StrVec            missing_ids;
+    Int64Vec          match_indices;
+    RecordBatchVector result_batches;
 
     // >> TODO: interval time: source keymap <--> populate missing rows
     for (int chunk_ndx = 0; chunk_ndx < ordered_ids->num_chunks(); ++chunk_ndx) {
@@ -190,10 +190,9 @@ CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_tabl
             ordered_ids->chunk(chunk_ndx)
         );
 
+        /* NOTE: put_time comes from <iomanip>
         // time stamp each iteration: find variability in processing each chunk
         auto timestamp = std::time(nullptr);
-
-        /* NOTE: put_time comes from <iomanip>
         std::cout << "[" << std::put_time(std::localtime(&timestamp), "%T") << "] "
                   << "chunk: " << chunk_ndx
                   << std::endl
@@ -229,7 +228,24 @@ CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_tabl
 
                 // push RecordBatches onto the end of result_batches
                 TableBatchReader batch_converter(*table_selection);
-                ARROW_RETURN_NOT_OK(batch_converter.ReadAll(&result_batches));
+
+                // `ReadAll` batches from table_selection
+                shared_ptr<RecordBatch> result_batch { nullptr };
+                auto status_readbatch = batch_converter.ReadNext(&result_batch);
+                while (status_readbatch.ok() and result_batch != nullptr) {
+                  result_batches.push_back(result_batch);
+                  result_batch.reset();
+                }
+
+                // Print the not ok status to be sure that
+                if (not status_readbatch.ok()) {
+                  std::cerr << "Error reading table batches: "
+                            << status_readbatch.message()
+                            << std::endl
+                  ;
+
+                  return status_readbatch;
+                }
 
                 match_indices.clear();
             }
@@ -259,7 +275,23 @@ CopyMatchedRows(shared_ptr<ChunkedArray> ordered_ids, shared_ptr<Table> src_tabl
 
         // push RecordBatches onto the end of result_batches
         TableBatchReader batch_converter(*table_selection);
-        ARROW_RETURN_NOT_OK(batch_converter.ReadAll(&result_batches));
+
+        // `ReadAll` batches from table_selection
+        shared_ptr<RecordBatch> result_batch { nullptr };
+        auto status_readbatch = batch_converter.ReadNext(&result_batch);
+        while (status_readbatch.ok() and result_batch != nullptr) {
+          result_batches.push_back(result_batch);
+          result_batch.reset();
+        }
+
+        if (not status_readbatch.ok()) {
+          std::cerr << "Error reading batches: "
+                    << status_readbatch.message()
+                    << std::endl
+          ;
+
+          return status_readbatch;
+        }
 
         match_indices.clear();
     }
