@@ -34,6 +34,10 @@
 // ------------------------------
 // Type Aliases
 
+// >> Core types
+using std::shared_ptr;
+using std::unique_ptr;
+
 // >> Arrow result (and wrapper) types
 using arrow::Datum;
 using arrow::Result;
@@ -44,13 +48,17 @@ using arrow::Array;
 using arrow::ChunkedArray;
 using arrow::Field;
 using arrow::Schema;
+using KVMetadata = arrow::KeyValueMetadata;
 using arrow::Table;
 using arrow::RecordBatch;
+
+// >> Arrow vector aliases
+using arrow::ArrayVector;
+using arrow::RecordBatchVector;
 
 // >> Arrow low-level and meta types
 using arrow::DataType;
 using arrow::Buffer;
-using arrow::util::string_view;
 
 // >> Arrow array types
 using arrow::Int32Array;
@@ -74,6 +82,9 @@ using arrow::ipc::feather::Reader;
 
 // ------------------------------
 // Functions
+
+void PrintSchemaAttributes(shared_ptr<Schema> schema, int64_t offset, int64_t length);
+void PrintSchemaMetadata(shared_ptr<KVMetadata> schema_meta, int64_t offset, int64_t length);
 
 void PrintSchema(shared_ptr<Schema>     schema    , int64_t offset, int64_t length);
 void PrintTable(shared_ptr<Table>       table_data, int64_t offset, int64_t length);

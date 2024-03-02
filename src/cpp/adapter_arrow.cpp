@@ -31,6 +31,65 @@ using arrow::fs::FileSystemFromUri;
 // Convenience Functions
 
 void
+PrintSchemaAttributes(shared_ptr<Schema> schema, int64_t offset, int64_t length) {
+    bool    show_field_meta = true;
+    int64_t field_count     = schema->num_fields();
+    int64_t max_fieldndx    = field_count;
+
+    std::cout << "Schema Excerpt ";
+
+    if (length > 0) {
+        max_fieldndx = length < field_count ? length : field_count;
+        std::cout << "(" << max_fieldndx << " of " << field_count << ")";
+    }
+
+    else {
+        std::cout << "(" << field_count << " of " << field_count << ")";
+    }
+
+    std::cout << std::endl << "-------------------------" << std::endl;
+
+    for (int field_ndx = offset; field_ndx < max_fieldndx; field_ndx++) {
+        shared_ptr<Field> schema_field = schema->field(field_ndx);
+        std::cout << "\t[" << field_ndx << "]:" << std::endl;
+        std::cout << "\t\t"
+                  << schema_field->ToString(show_field_meta)
+                  << std::endl
+        ;
+    }
+}
+
+void
+PrintSchemaMetadata(shared_ptr<KVMetadata> schema_meta, int64_t offset, int64_t length) {
+    // grab a reference to the metadata for convenience
+    int64_t metakey_count = schema_meta->size();
+    int64_t max_keyndx    = metakey_count;
+
+    std::cout << "Schema Metadata excerpt ";
+
+    if (length > 0) {
+        max_keyndx = length < metakey_count ? length : metakey_count;
+        std::cout << "(" << max_keyndx << " of " << metakey_count << ")";
+    }
+
+    else {
+        std::cout << "(" << metakey_count << " of " << metakey_count << ")";
+    }
+
+    std::cout << std::endl << "------------------------" << std::endl;
+
+    // any other metadata
+    for (int64_t meta_ndx = offset; meta_ndx < max_keyndx; meta_ndx++) {
+        std::cout << "\t[" << meta_ndx << "] "
+                  << schema_meta->key(meta_ndx)
+                  << " -> "
+                  << schema_meta->value(meta_ndx)
+                  << std::endl
+        ;
+    }
+}
+
+void
 PrintSchema(shared_ptr<Schema> schema, int64_t offset, int64_t length) {
   std::cout << "Schema:" << std::endl;
 
