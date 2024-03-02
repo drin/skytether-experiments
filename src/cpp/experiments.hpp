@@ -28,17 +28,20 @@
 #include <ctime>
 #include <iomanip>
 
+#include "adapter_arrow.hpp"
+#include "util_arrow.hpp"
+#include "operators.hpp"
+
 
 // ------------------------------
 // Type Aliases and Macros
-
-#define DEBUG 1
 
 // >> Core types
 using std::shared_ptr;
 using std::unique_ptr;
 
 using std::string;
+using std::string_view;
 using std::vector;
 using std::unordered_map;
 
