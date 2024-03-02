@@ -19,8 +19,9 @@
 // ------------------------------
 // Dependencies
 
+#include <iostream>
+
 #include "operators.hpp"
-#include "util_arrow.hpp"
 
 
 // ------------------------------
@@ -151,7 +152,7 @@ MeanAggr::Accumulate( shared_ptr<Table> new_vals
     shared_ptr<ChunkedArray> delta_var;
 
     if (this->count == 0) {
-        this->Initialize(new_vals->column(col_startndx));
+        ARROW_RETURN_NOT_OK(this->Initialize(new_vals->column(col_startndx)));
         this->count   = 1;
         col_startndx += 1;
     }
@@ -238,10 +239,18 @@ AggrTable( shared_ptr<Table>  src_table
   }
 
   auto aggr_tstart = std::chrono::steady_clock::now();
-  partial_aggr.Accumulate(src_table, col_startndx, col_stopndx);
+  auto status_aggr = partial_aggr.Accumulate(src_table, col_startndx, col_stopndx);
   auto aggr_tstop  = std::chrono::steady_clock::now();
 
-  (*aggr_result) = partial_aggr.TakeResult();
+  if (status_aggr.ok()) {
+    (*aggr_result) = partial_aggr.TakeResult();
+  }
+
+  else {
+    std::cerr << "Error during aggregation: "
+              << status_aggr.message()
+              << std::endl;
+  }
 
   return std::chrono::duration_cast<std::chrono::milliseconds>(aggr_tstop - aggr_tstart);
 }

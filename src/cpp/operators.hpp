@@ -22,6 +22,7 @@
 
 // brings in all Apache Arrow dependencies
 #include "adapter_arrow.hpp"
+#include "util_arrow.hpp"
 
 
 // ------------------------------
